@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary  # Use this for PostgreSQL (or replace with sqlite if needed)
+passlib[bcrypt]  # For password hashing
+python-jose[cryptography]  # For JWT authentication
+python-dotenv  # For environment variables
+email-validator  # To validate emails
+pydantic

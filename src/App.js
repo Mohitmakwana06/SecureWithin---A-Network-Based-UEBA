@@ -1,0 +1,51 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import './App.css';
+import SideMenu from './components/SideMenu';
+import ClientsPage from './components/ClientsPage';
+import Dashboard from './Dashboard';
+import DetailsPage from './components/DetailsPage';
+import SignInSide from './components/SignInSide';
+import SignUp from './components/SignUp';
+import OrgSignIn from './components/OrgSignIn';
+import OrgSignUp from './components/OrgSignUp';
+import SignInCard from './components/SignInCard';
+
+function App() {
+  return (
+    <Router>
+      <div style={{ display: 'flex', height: '100vh' }}>
+        <Routes>
+          {/* Sign-in Page (Standalone) */}
+          <Route path="/" element={<OrgSignIn />} />
+          <Route path="/SignInSide" element={<SignInSide />} />
+          <Route path='/SignUp' element={<SignUp />}/>
+          <Route path='/OrgSignUp' element={<OrgSignUp />}/>
+
+          {/* Authenticated Pages with Sidebar */}
+          <Route
+            path="/*"
+            element={
+              <div style={{ display: 'flex', width: '100%' }}>
+                {/* Sidebar */}
+                <SideMenu />
+
+                {/* Main Content Area */}
+                <div style={{ flex: 1, padding: '20px' }}>
+                  <Routes>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/clients" element={<ClientsPage />} />
+                    <Route path="/details/:id" element={<DetailsPage />} />
+                    <Route path="*" element={<Navigate to="/dashboard" />} />
+                  </Routes>
+                </div>
+              </div>
+            }
+          />
+        </Routes>
+      </div>
+    </Router>
+  );
+}
+
+export default App;

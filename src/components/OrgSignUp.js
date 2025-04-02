@@ -2,10 +2,10 @@ import * as React from 'react';
 import Box from '@mui/material/Box';
 import { useState } from 'react';
 import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
+//import Checkbox from '@mui/material/Checkbox';
 import CssBaseline from '@mui/material/CssBaseline';
-import Divider from '@mui/material/Divider';
-import FormControlLabel from '@mui/material/FormControlLabel';
+//import Divider from '@mui/material/Divider';
+//import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
 import FormControl from '@mui/material/FormControl';
 import Link from '@mui/material/Link';
@@ -15,12 +15,14 @@ import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
 import AppTheme from '../shared-theme/AppTheme';
-import { GoogleIcon, FacebookIcon, SitemarkIcon } from '../CustomIcons';
+//import { GoogleIcon, FacebookIcon, SitemarkIcon } from '../CustomIcons';
 import ColorModeSelect from '../shared-theme/ColorModeSelect';
-import SignInSide from './SignInSide';
-import ForgotPassword from './ForgotPassword';
+//import SignInSide from './SignInSide';
+//import ForgotPassword from './ForgotPassword';
+//import Content from './Content';
 import Logo from '../Logo.png';
-import OtpPopUp from './OtpPopUp';
+import OrgOtpPopUp from './OrgOtpPopUp';
+import axios from 'axios';
 
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -81,10 +83,13 @@ export default function OrgSignUp(props) {
     password: '',
     confirmPassword: '',
     orgCode: '',
-    orgPassword: ''
+    orgPassword: '',
+    is_admin: false
   });
   
   const [errors, setErrors] = useState({});
+  const [open, setOpen] = React.useState(false);
+  const [otpSent, setOtpSent] = useState(false);
 
   const validateInputs = () => {
     let newErrors = {};
@@ -110,8 +115,8 @@ export default function OrgSignUp(props) {
       isValid = false;
     }
 
-    if (!formData.orgCode.trim()) {
-      newErrors.orgCode = 'Organization Code is required.';
+    if (!formData.orgCode.trim() || !/^[A-Za-z]{3}\d{5}$/.test(formData.orgCode)) {
+      newErrors.orgCode = 'Organization Code must have 3 letters followed by 5 digits.';
       isValid = false;
     }
 
@@ -128,14 +133,60 @@ export default function OrgSignUp(props) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-
+  const joinOrg = async () => {
+    try {
+      const formDataToSend = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        organization_code: formData.orgCode,
+        organization_password: formData.orgPassword,
+        is_admin: formData.is_admin,
+      };
+  
+      console.log("Sending data to backend:", formDataToSend);  // Log data being sent
+  
+      const response = await axios.post("http://localhost:8000/join-organization/", formDataToSend);
+      setOtpSent(true);  // OTP sent
+      handleClickOpen(); // Open the OTP pop-up
+      console.log("Backend success response:", response.data);
+    } catch (error) {
+      console.error("Error during OTP sending:", error);
+  
+      if (error.response) {
+        console.log("Full backend error response:", error.response);
+        console.error('Error message:', error.response.data.detail);
+        const errorDetails = error.response?.data?.detail;
+  
+        if (Array.isArray(errorDetails)) {
+          // Handle the case where errorDetails is an array
+          let errorMessages = errorDetails.map((err, index) => `${index + 1}: ${err.msg}`).join(', ');
+          console.log("Error details from backend:", errorMessages);
+          setErrors({ api: errorMessages });  // Show all errors
+        } else if (typeof errorDetails === 'string') {
+          // Handle the case where errorDetails is a string
+          console.log("Error message:", errorDetails);
+          setErrors({ api: errorDetails });  // Show single error
+        } else {
+          setErrors({ api: 'An error occurred' });
+        }
+      } else {
+        console.log("Error without response:", error.message);
+        setErrors({ api: 'An unexpected error occurred' });
+      }
+    }
+  };
+    
+  
   const handleSubmit = (event) => {
     event.preventDefault();
     if (validateInputs()) {
-      console.log('Form submitted:', formData);
+      joinOrg();
+      handleClickOpen();
     }
   };
-  const [open, setOpen] = React.useState(false);
+  
+  
 
   const handleClickOpen = () => {
     setOpen(true);
@@ -274,11 +325,6 @@ export default function OrgSignUp(props) {
               type="submit"
               fullWidth
               variant="contained"
-              onClick={() => {
-                if (validateInputs()) {
-                  handleClickOpen();
-                }
-              }}
             >
               Sign up
             </Button>
@@ -308,7 +354,7 @@ export default function OrgSignUp(props) {
           </Box>
         </Card>
       </SignUpContainer>
-      <OtpPopUp open={open} handleClose={handleClose} />
+      <OrgOtpPopUp open={open} handleClose={handleClose} name={formData.name} email={formData.email} password={formData.password} orgcode={formData.orgCode} orgpassword={formData.orgPassword} />
     </AppTheme>
   );
 }

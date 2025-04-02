@@ -1,11 +1,12 @@
 import * as React from 'react';
 import Box from '@mui/material/Box';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
+//import Checkbox from '@mui/material/Checkbox';
 import CssBaseline from '@mui/material/CssBaseline';
-import Divider from '@mui/material/Divider';
-import FormControlLabel from '@mui/material/FormControlLabel';
+//import Divider from '@mui/material/Divider';
+//import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
 import FormControl from '@mui/material/FormControl';
 import Link from '@mui/material/Link';
@@ -15,12 +16,13 @@ import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
 import AppTheme from '../shared-theme/AppTheme';
-import { GoogleIcon, FacebookIcon, SitemarkIcon } from '../CustomIcons';
+//import { GoogleIcon, FacebookIcon, SitemarkIcon } from '../CustomIcons';
 import ColorModeSelect from '../shared-theme/ColorModeSelect';
-import SignInSide from './SignInSide';
-import ForgotPassword from './ForgotPassword';
+//import SignInSide from './SignInSide';
+//import ForgotPassword from './ForgotPassword';
 import OtpPopUp from './OtpPopUp';
 import Logo from '../Logo.png';
+import axios from 'axios';
 
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -74,15 +76,19 @@ const SignUpContainer = styled(Stack)(({ theme }) => ({
   },
 }));
 
-export default function OrgSignUp(props) {
+export default function SignUp(props) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
-  
+
   const [errors, setErrors] = useState({});
+  const [open, setOpen] = React.useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+
+  const navigate = useNavigate();
 
   const validateInputs = () => {
     let newErrors = {};
@@ -116,14 +122,48 @@ export default function OrgSignUp(props) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    if (validateInputs()) {
-      console.log('Form submitted:', formData);
+  const sendOtp = async () => {
+    try {
+      // Ensure you are sending the correct data in the POST request
+      const response = await axios.post("http://localhost:8000/signup/", {
+        email: formData.email,
+        name: formData.name,
+        password: formData.password,
+      });
+      
+      // Check if the response is valid before accessing response.data
+      if (response && response.data) {
+        setOtpSent(true);
+        console.log(response.data.message); 
+        localStorage.setItem("authToken",response.data.token);// Assuming response.data.message contains the success message
+      } else {
+        throw new Error("No data received from the server");
+      }
+    } catch (error) {
+      // Log the error for debugging
+      console.error("Error during OTP sending:", error);
+  
+      // Check if the error response is available
+      if (error.response) {
+        // Server error response, you can access error.response.data here
+        setErrors({ api: error.response.data.detail || 'An error occurred' });
+      } else {
+        // For network or other errors
+        setErrors({ api: error.message || 'An unexpected error occurred' });
+      }
     }
   };
-  const [open, setOpen] = React.useState(false);
+  
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (validateInputs()) {
+      sendOtp();
+      handleClickOpen();
+    }
+  };
+
+
 
   const handleClickOpen = () => {
     setOpen(true);
@@ -133,6 +173,9 @@ export default function OrgSignUp(props) {
     setOpen(false);
   };
 
+  const handleVerificationSuccess = () => {
+    navigate('/SignInSide');  // Navigate after successful OTP verification
+  };
 
   return (
     <AppTheme {...props}>
@@ -184,7 +227,10 @@ export default function OrgSignUp(props) {
                 required
                 fullWidth
                 id="email"
-                value={formData.email} onChange={handleChange} error={!!errors.email} helperText={errors.email} 
+                value={formData.email} 
+                onChange={handleChange} 
+                error={!!errors.email} 
+                helperText={errors.email} 
                 placeholder="your@email.com"
                 name="email"
                 //autoComplete="email"
@@ -237,11 +283,6 @@ export default function OrgSignUp(props) {
               type="submit"
               fullWidth
               variant="contained"
-              onClick={() => {
-                if (validateInputs()) {
-                  handleClickOpen();
-                }
-              }}
             >
               Sign up
             </Button>
@@ -271,7 +312,7 @@ export default function OrgSignUp(props) {
           </Box>
         </Card>
       </SignUpContainer>
-      <OtpPopUp open={open} handleClose={handleClose} />
+      <OtpPopUp open={open} handleClose={handleClose} name={formData.name} email={formData.email} password={formData.password} onVerified={handleVerificationSuccess}/>
     </AppTheme>
   );
 }

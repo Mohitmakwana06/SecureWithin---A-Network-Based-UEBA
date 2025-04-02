@@ -1,169 +1,134 @@
-import React, { useRef, useState } from 'react';
-import Stack from '@mui/material/Stack';
-import Badge from '@mui/material/Badge';
-import ClickAwayListener from '@mui/material/ClickAwayListener';
-import Divider from '@mui/material/Divider';
-import IconButton from '@mui/material/IconButton';
-import List from '@mui/material/List';
-import ListItemButton from '@mui/material/ListItemButton';
-import ListItemAvatar from '@mui/material/ListItemAvatar';
-import ListItemText from '@mui/material/ListItemText';
-import Paper from '@mui/material/Paper';
-import Popper from '@mui/material/Popper';
-import Tooltip from '@mui/material/Tooltip';
-import Typography from '@mui/material/Typography';
-import Avatar from '@mui/material/Avatar';
-import Box from '@mui/material/Box';
-import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
-import CustomDatePicker from './CustomDatePicker';
-import NavbarBreadcrumbs from './NavbarBreadcrumbs';
-import ColorModeIconDropdown from '../shared-theme/ColorModeIconDropdown';
-import Search from './Search';
-import GiftOutlined from '@ant-design/icons/GiftOutlined';
-import MessageOutlined from '@ant-design/icons/MessageOutlined';
-import SettingOutlined from '@ant-design/icons/SettingOutlined';
-import CheckCircleOutlined from '@ant-design/icons/CheckCircleOutlined';
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Stack, Badge, ClickAwayListener, Divider, IconButton, List,
+  ListItemButton, ListItemAvatar, ListItemText, Paper, Popper, Tooltip,
+  Typography, Avatar, Box,
+} from "@mui/material";
+import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
+import { CheckCircleOutlined, NotificationsActive } from "@mui/icons-material";
 
 export default function Header() {
   const anchorRef = useRef(null);
   const [open, setOpen] = useState(false);
-  const [read, setRead] = useState(2);
- 
-  
+  const [read, setRead] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [ws, setWs] = useState(null);
 
-  // Toggle notification visibility
-  const handleToggle = () => setOpen((prevOpen) => !prevOpen);
-  const handleClick = (position) => {
-    console.log('Clicked position:', position);};
+  useEffect(() => {
+    let socket;
 
-  // Close notification popper when clicking outside
+    const connectWebSocket = () => {
+      socket = new WebSocket("ws://localhost:8000/ws/alert");
+
+      socket.onopen = () => console.log("✅ WebSocket Connected");
+
+      socket.onmessage = (event) => {
+        console.log("📩 WebSocket Message Received:", event.data);
+        
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.message && data.timestamp) {
+            setNotifications((prev) => [
+              { message: data.message, time: data.timestamp },
+              ...prev,
+            ]);
+            setRead((prev) => prev + 1);
+          } else {
+            console.warn("⚠️ Unexpected WebSocket data format:", data);
+          }
+        } catch (error) {
+          console.error("❌ Error parsing WebSocket message:", error);
+        }
+      };
+
+      socket.onerror = (error) => {
+        console.error("❌ WebSocket Error:", error);
+      };
+
+      socket.onclose = () => {
+        console.log("⚠️ WebSocket Disconnected, retrying in 5 seconds...");
+        setTimeout(connectWebSocket, 5000);
+      };
+
+      setWs(socket);
+    };
+
+    connectWebSocket();
+
+    return () => {
+      if (socket) socket.close();
+    };
+  }, []);
+
+  const handleToggle = () => setOpen((prev) => !prev);
   const handleClose = (event) => {
-    if (anchorRef.current && anchorRef.current.contains(event.target)) {
-      return;
-    }
+    if (anchorRef.current && anchorRef.current.contains(event.target)) return;
     setOpen(false);
   };
 
   return (
-    <Stack
-      direction="row"
+    <Stack direction="row"
       sx={{
-        display: { xs: 'none', md: 'flex' },
-        width: '100%',
-        alignItems: { xs: 'flex-start', md: 'center' },
-        justifyContent: 'space-between',
-        
-        position:'relative',
-        maxWidth: { sm: '100%', md: '100%' },
+        display: { xs: "none", md: "flex" },
+        width: "100%",
+        alignItems: "center",
+        justifyContent: "space-between",
+        position: "relative",
+        maxWidth: "100%",
         pt: 1,
       }}
       spacing={2}
     >
-      <div>
-      <NavbarBreadcrumbs />
-      </div>
-      <div direction={'left'}>
-        <Stack direction="row" sx={{ gap: 1 }}>
-          <Search />
-          <CustomDatePicker />
+      {/* Notification Icon */}
+      <Box sx={{ position: "relative", display: "inline-block" }}>
+        <IconButton ref={anchorRef} color="inherit" onClick={handleToggle}>
+          <Badge badgeContent={read} color="primary">
+            <NotificationsRoundedIcon />
+          </Badge>
+        </IconButton>
 
-          {/* Notification Icon and Popper */}
-          <Box sx={{ position: 'relative', display: 'inline-block' }}>
-            <IconButton
-              ref={anchorRef}
-              color="inherit"
-              aria-label="open notifications"
-              onClick={() => {
-                handleToggle();
-                handleClick('botton');
-              }}
-            >
-              <Badge badgeContent={read} color="primary">
-                <NotificationsRoundedIcon />
-              </Badge>
-            </IconButton>
-
-            {/* Notification Popper */}
-            <Popper
-              open={open}
-              anchorEl={anchorRef.current}
-              placement='bottom-end'// Adjusted for top-right corner placement
-              /*role={undefined}
-              transition*/
-              disablePortal
-              sx={{ zIndex: 1201 }}
-            >
-              <Paper 
-              sx={{ 
-                alignSelf:'flex-end',
-                width: 350, 
-                maxWidth: '100%', 
-                mt: 1.5,
-                top:0,
-                right:0,
-              }}
-              >
-                <ClickAwayListener onClickAway={handleClose}>
-                  <Box sx={{ p: 1 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between',alignItems: 'center', p: 1 }}>
-                      <Typography variant="h6" sx={{ pl: 1 }} align='left'>Notification</Typography>
-                      <Tooltip title="Mark all as read">
-                        <IconButton
-                          align='right'
-                          size="small"
-                          onClick={() => setRead(0)}
-                          color="success"
-                        >
-                          <CheckCircleOutlined />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                    <List>
-                      <ListItemButton>
-                        <ListItemAvatar>
-                          <Avatar sx={{ bgcolor: 'success.lighter' }}>
-                            <GiftOutlined />
-                          </Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary="Cristina Danny's birthday today."
-                          secondary="2 min ago"
-                        />
-                      </ListItemButton>
-                      <Divider />
-                      <ListItemButton>
-                        <ListItemAvatar>
-                          <Avatar sx={{ bgcolor: 'primary.lighter' }}>
-                            <MessageOutlined />
-                          </Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary="Aida Burg commented on your post."
-                          secondary="5 August"
-                        />
-                      </ListItemButton>
-                      <Divider />
-                      <ListItemButton>
-                        <ListItemAvatar>
-                          <Avatar sx={{ bgcolor: 'error.lighter' }}>
-                            <SettingOutlined />
-                          </Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary="Profile completion at 60%."
-                          secondary="7 hours ago"
-                        />
-                      </ListItemButton>
-                    </List>
-                  </Box>
-                </ClickAwayListener>
-              </Paper>
-            </Popper>
-          </Box>
-
-          <ColorModeIconDropdown />
-        </Stack>
-      </div>
+        {/* Notification Popper */}
+        <Popper open={open} anchorEl={anchorRef.current} placement="bottom-end" disablePortal sx={{ zIndex: 1201 }}>
+          <Paper sx={{ width: 350, height: 400, maxWidth: "100%", mt: 1.5 }}>
+            <ClickAwayListener onClickAway={handleClose}>
+              <Box sx={{ p: 1 }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", p: 1 }}>
+                  <Typography variant="h6" sx={{ pl: 1 }} align="left">
+                    Notifications
+                  </Typography>
+                  <Tooltip title="Mark all as read">
+                    <IconButton size="small" onClick={() => { setNotifications([]); setRead(0); }} color="success">
+                      <CheckCircleOutlined />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+                <List>
+                  {notifications.length > 0 ? (
+                    notifications.map((alert, index) => (
+                      <React.Fragment key={index}>
+                        <ListItemButton>
+                          <ListItemAvatar>
+                            <Avatar sx={{ bgcolor: "error.lighter" }}>
+                              <NotificationsActive />
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText primary={alert.message} secondary={alert.time} />
+                        </ListItemButton>
+                        <Divider />
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    <Typography sx={{ textAlign: "center", p: 2, color: "text.secondary" }}>
+                      No new notifications
+                    </Typography>
+                  )}
+                </List>
+              </Box>
+            </ClickAwayListener>
+          </Paper>
+        </Popper>
+      </Box>
     </Stack>
   );
 }

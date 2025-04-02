@@ -1,4 +1,4 @@
-// TableColumns.js
+// Columns.js
 import React from 'react';
 import Avatar from '@mui/material/Avatar';
 import Chip from '@mui/material/Chip';
@@ -65,15 +65,16 @@ export const renderAvatar = (params) => {
 
 export const columns = [
   {
-    field: 'pageTitle',
-    headerName: 'Page Title',
+    field: 'Client Name',
+    headerName: 'Page Client',
     flex: 1.5,
     minWidth: 300,
     renderCell: (params) => (
       <Link
       to={`/details/${params.row.id}`} // Navigate using the row's ID
       state={{ ...params.row }} // Pass the entire row data as state
-      style={{ textDecoration: 'none', color: 'white' }}
+      style={{ textDecoration: 'none'}}  //, color: 'white' 
+
       >
         {params.value}
       </Link>
@@ -102,7 +103,7 @@ export const columns = [
     flex: 1,
     minWidth: 150,
   },
-  {
+  /*{
     field: 'viewsPerUser',
     headerName: 'Views per User',
     headerAlign: 'right',
@@ -124,5 +125,16 @@ export const columns = [
     flex: 1,
     minWidth: 150,
     renderCell: renderSparklineCell,
+  },*/
+  {
+    field: 'actions',
+    headerName: 'Actions',
+    flex: 1,
+    minWidth: 100,
+    renderCell: (params) => (
+      <Link to={`/details/${params.row.id}`} style={{ textDecoration: 'none' }}>
+        View Details
+      </Link>
+    ),
   },
 ];

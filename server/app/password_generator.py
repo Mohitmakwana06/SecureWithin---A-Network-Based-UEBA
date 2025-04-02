@@ -10,4 +10,4 @@ def generate_password(length, n_capitals, n_numbers, n_letters):
     return str("".join(password))
 
 def generate_org_code():
-    return "ORG-" + generate_password(5,0,5,0)
+    return "ORG" + generate_password(5,0,5,0)

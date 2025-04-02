@@ -1,10 +1,14 @@
 import smtplib
 from pydantic import EmailStr
 import os
+from dotenv import load_dotenv
+
+# ✅ Load environment variables
+load_dotenv()
 
 def send_email(email: EmailStr, subject: str, message: str):
-    smtp_email = os.getenv("EMAIL_USERNAME")
-    smtp_password = os.getenv("EMAIL_PASSWORD")
+    smtp_email = "newprojectueba69@gmail.com" #os.getenv("EMAIL_USERNAME")
+    smtp_password = "jygg isrf xgbx mwjt" #os.getenv("EMAIL_PASSWORD")
     smtp_server = os.getenv("EMAIL_SERVER")
     smtp_port = int(os.getenv("EMAIL_PORT"))
 

@@ -46,7 +46,8 @@ export const rows = [
       },
       {
         id: 4,
-        pageTitle: 'User Profile Dashboard',
+
+        pageTitle: 'Meet Patel',
         status: 'Online',
         eventCount: 112543,
         users: 96240,
@@ -61,7 +62,8 @@ export const rows = [
       },
       {
         id: 5,
-        pageTitle: 'Article Listing - Tech News',
+
+        pageTitle: 'Meet Ajudia',
         status: 'Offline',
         eventCount: 3653,
         users: 142240,

@@ -1,37 +1,85 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 
-# ✅ Base Schema (Shared Fields)
 class UserBase(BaseModel):
     name: str
     email: EmailStr
-    organization_code: Optional[str] = None  # Optional for initial signup
-    is_admin: Optional[bool] = False  # Default to False (only creator is admin)
+    password: str
+    organization_code: Optional[str] = None  
+    is_admin: Optional[bool] = False
 
-# ✅ Signup Schema (Includes Password, No Org Code Initially)
 class UserSignup(UserBase):
     password: str
 
-# ✅ Schema for OTP Verification
 class OTPVerification(BaseModel):
     email: EmailStr
     otp: str
 
-# ✅ Organization Creation Schema (Used when creating an org)
 class OrganizationCreate(UserSignup):
-    is_admin: bool = True  # ✅ Ensure creator is admin
+    is_admin: bool = True 
 
-# ✅ Organization Join Schema (User joins an existing org)
-class OrganizationJoin(UserSignup):
+class OrganizationJoin(UserBase):
+    name: str
+    email: EmailStr
+    password: str
     organization_code: str
     organization_password: str
-    is_admin: bool = False  # ✅ Ensure joining user is NOT an admin
+    is_admin: bool = False
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
     organization_code: str
-    organization_password: str
+
+class VerifySignupRequest(BaseModel):
+    email: str
+    otp: str
+    name:str
+    password:str
+
+# ✅ Define a combined request model
+class VerifyJoinRequest(BaseModel):
+    email: EmailStr
+    otp: str
+    name: str
+    password: str
+    organization_code: str
+    organization_password: str  # ✅ Now includes organization password
+
+class ClientData(BaseModel):
+    id: str
+    client_name: str
+    client_role: str
+    status: str
+
+class ClientInput(BaseModel):
+    id: str
+    client_name:str
+    client_role: str
+
+class Log(BaseModel):
+    id: str
+    timestamp: str
+    client_name: str 
+    host_id: Optional[str] 
+    os_platform: Optional[str] 
+    network_transport: Optional[str] 
+    network_type: Optional[str] 
+    source_bytes: Optional[int] 
+    destination_ip: Optional[str] 
+    event_action: Optional[str] 
+    event_duration: Optional[int] 
+    source_mac: Optional[str] 
+    flow_id: Optional[str] 
+    server_domain: Optional[str] 
+
+class ClientDetails(BaseModel):
+    id: str
+    name: str
+    role: str
+    status: str
+    logs: List[Log]
+
 
 # ✅ User Response Schema (Excludes Password)
 class UserResponse(UserBase):

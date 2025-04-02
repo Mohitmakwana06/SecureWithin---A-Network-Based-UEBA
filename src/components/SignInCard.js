@@ -1,17 +1,15 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
+import { useState } from 'react';
 import Button from '@mui/material/Button';
 import MuiCard from '@mui/material/Card';
-import Checkbox from '@mui/material/Checkbox';
 import FormLabel from '@mui/material/FormLabel';
 import FormControl from '@mui/material/FormControl';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Link from '@mui/material/Link';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { styled } from '@mui/material/styles';
 import ForgotPassword from './ForgotPassword';
+import {Link, useNavigate} from 'react-router-dom';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -28,12 +26,78 @@ const Card = styled(MuiCard)(({ theme }) => ({
 }));
 
 export default function SignInCard() {
-  const [usernameError, setUsernameError] = React.useState(false);
-  const [usernameErrorMessage, setUsernameErrorMessage] = React.useState('');
-  const [passwordError, setPasswordError] = React.useState(false);
-  const [passwordErrorMessage, setPasswordErrorMessage] = React.useState('');
-  const [open, setOpen] = React.useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    orgCode: '',
+  });
+
+  const [errors, setErrors] = useState({});
   const navigate = useNavigate();
+
+  const validateInputs = () => {
+    let newErrors = {};
+    let isValid = true;
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required.';
+      isValid = false;
+    }
+
+    if (!formData.password || formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters long.';
+      isValid = false;
+    }
+
+    if (!formData.orgCode.trim() || !/^[A-Za-z]{3}\d{5}$/.test(formData.orgCode)) {
+      newErrors.orgCode = 'Organization Code must have 3 letters followed by 5 digits.';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (validateInputs()) {
+      try {
+        const response = await fetch('http://localhost:8000/login/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: formData.email, // Mapping frontend email to backend email
+            password: formData.password,
+            organization_code: formData.orgCode,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Something went wrong');
+        }
+
+        const data = await response.json();
+        console.log('Login successful:', data);
+        // Handle successful login, such as saving JWT token to localStorage
+        localStorage.setItem('token', data.token);
+
+        // Navigate to a different page after successful login (if needed)
+        navigate('/dashboard');
+      } catch (error) {
+        setErrors({ apiError: error.message || 'Something went wrong' });
+      }
+    }
+  };
+
+  const [open, setOpen] = React.useState(false);
 
   const handleClickOpen = () => {
     setOpen(true);
@@ -41,50 +105,6 @@ export default function SignInCard() {
 
   const handleClose = () => {
     setOpen(false);
-  };
-
-  const validateInputs = (username, password) => {
-    let isValid = true;
-
-    if (!username || username.trim().length === 0) {
-      setUsernameError(true);
-      setUsernameErrorMessage('Please enter a valid username.');
-      isValid = false;
-    } else {
-      setUsernameError(false);
-      setUsernameErrorMessage('');
-    }
-
-    if (!password || password.length < 3) {
-      setPasswordError(true);
-      setPasswordErrorMessage('Password must be at least 8 characters long.');
-      isValid = false;
-    } else {
-      setPasswordError(false);
-      setPasswordErrorMessage('');
-    }
-
-    return isValid;
-  };
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-
-    const data = new FormData(event.currentTarget);
-    const username = data.get('username');
-    const password = data.get('password');
-
-    if (validateInputs(username, password)) {
-      if (username === 'root' && password === 'root') {
-        console.log('Signed in with default credentials');
-        navigate('/Dashboard');
-        // Add navigation logic here if required
-      } else {
-        console.log('Invalid credentials');
-        setUsernameError(true);
-        setUsernameErrorMessage('Invalid username or password.');
-      }
-    }
   };
 
   return (
@@ -98,73 +118,80 @@ export default function SignInCard() {
       </Typography>
       <Box
         component="form"
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit} // Use onSubmit here
         noValidate
         sx={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 2 }}
       >
         <FormControl>
-          <FormLabel htmlFor="username">Username</FormLabel>
+          <FormLabel htmlFor="email">Email</FormLabel>
           <TextField
-            error={usernameError}
-            helperText={usernameErrorMessage}
-            id="username"
+            error={!!errors.email}
+            helperText={errors.email}
+            id="email"
             type="text"
-            name="username"
-            placeholder="Enter your username" 
+            name="email"
+            value={formData.email}
+            onChange={handleChange} // Use handleChange to update state
+            placeholder="Enter your email"
             required
             fullWidth
             variant="outlined"
-            color={usernameError ? 'error' : 'primary'}
+            color={!!errors.email ? 'error' : 'primary'}
           />
         </FormControl>
+
         <FormControl>
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
             <FormLabel htmlFor="password">Password</FormLabel>
-            <Link
-              component="button"
-              type="button"
-              onClick={handleClickOpen}
-              variant="body2"
-              sx={{ alignSelf: 'baseline' }}
-            >
-              Forgot your password?
-            </Link>
           </Box>
           <TextField
-            error={passwordError}
-            helperText={passwordErrorMessage}
+            error={!!errors.password}
+            helperText={errors.password}
             name="password"
+            value={formData.password}
+            onChange={handleChange} // Use handleChange to update state
             placeholder="••••••"
             type="password"
             id="password"
             required
             fullWidth
             variant="outlined"
-            color={passwordError ? 'error' : 'primary'}
+            color={!!errors.password ? 'error' : 'primary'}
           />
         </FormControl>
-        <FormControlLabel
-          control={<Checkbox value="remember" color="primary" />}
-          label="Remember me"
-        />
+
+        <FormControl>
+          <FormLabel htmlFor="orgCode">Organization Code</FormLabel>
+          <TextField
+            name="orgCode"
+            value={formData.orgCode}
+            onChange={handleChange} // Use handleChange to update state
+            error={!!errors.orgCode}
+            helperText={errors.orgCode}
+            required
+            fullWidth
+            placeholder="ORG12345"
+          />
+        </FormControl>
+
         <ForgotPassword open={open} handleClose={handleClose} />
+
         <Button type="submit" fullWidth variant="contained">
           Sign in
         </Button>
+
         <Typography sx={{ textAlign: 'center' }}>
           Don&apos;t have an account?{' '}
           <span>
-            <Link
-              href="SignUp"
-              variant="body2"
-              sx={{ alignSelf: 'center' }}
-            >
-              Sign up
+            <Link to="/OrgSignUp" style={{ textDecoration: 'none' }}>
+              <Typography variant="body2" color="white">
+                Sign up
+              </Typography>
             </Link>
           </span>
         </Typography>
+
       </Box>
     </Card>
-    
   );
 }

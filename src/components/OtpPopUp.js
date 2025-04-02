@@ -1,4 +1,4 @@
-import React, { useState ,useEffect } from 'react';
+import React, { useState ,useEffect,useRef } from 'react';
 import PropTypes from 'prop-types';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -9,13 +9,17 @@ import DialogTitle from '@mui/material/DialogTitle';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
-function OtpPopUp({ open, handleClose }) {
+
+function OtpPopUp({ open, handleClose, name, email, password,onVerified }) {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null); // For success/error messages
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const timerRef = useRef(null); // Store interval ID
 
   useEffect(() => {
     if (open) {
@@ -24,13 +28,14 @@ function OtpPopUp({ open, handleClose }) {
       const timer = setInterval(() => {
         setResendTimer((prev) => {
           if (prev === 1) {
-            clearInterval(timer);
+            clearInterval(timerRef.current);
             setCanResend(true);
           }
           return prev - 1;
         });
       }, 1000);
-      return () => clearInterval(timer);
+      timerRef.current = timer;
+      return () => clearInterval(timerRef.current);
     }
   }, [open]);
 
@@ -38,22 +43,31 @@ function OtpPopUp({ open, handleClose }) {
     event.preventDefault();
     setLoading(true);
     setMessage(null);
+    const requestBody = JSON.stringify({name, email, otp, password});
+    console.log("Sending Request:",requestBody);
 
     try {
-      const response = await fetch('/api/verify-otp', {
+      
+      const response = await fetch('http://localhost:8000/verify-signup/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ otp }),
+        body: requestBody,
       });
+
+      const data = await response.json();
+
+      console.log("Server response:",data);
 
       if (response.ok) {
         setMessage({ type: 'success', text: 'OTP verified successfully!' });
         setOtp(''); // Clear the input field
-        handleClose();
+        setTimeout(() => {
+          handleClose();   // Close the popup
+          onVerified();    // Navigate to sign-in
+        }, 1000);
       } else {
-        const data = await response.json();
         setMessage({ type: 'error', text: data.message || 'Invalid OTP. Please try again.' });
       }
     } catch (error) {
@@ -70,16 +84,19 @@ function OtpPopUp({ open, handleClose }) {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/resend-otp', {
+      const response = await fetch('http://localhost:8000/signup/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
       });
+
       if (response.ok) {
         setMessage({ type: 'success', text: 'New OTP sent successfully!' });
       } else {
         setMessage({ type: 'error', text: 'Failed to resend OTP. Try again later.' });
       }
     } catch (error) {
+      console.error('Rsend OTP Error:',error);
       setMessage({ type: 'error', text: 'An error occurred. Please try again later.' });
     }
   };
@@ -119,7 +136,11 @@ function OtpPopUp({ open, handleClose }) {
           type="text"
           fullWidth
           value={otp}
-          onChange={(e) => setOtp(e.target.value)}
+          onChange={(e) => {
+            if (/^\d{0,6}$/.test(e.target.value)) {
+              setOtp(e.target.value);
+            }
+          }}
           disabled={loading}
           inputProps={{ maxLength: 6 }}
         />
@@ -149,6 +170,10 @@ function OtpPopUp({ open, handleClose }) {
 OtpPopUp.propTypes = {
   handleClose: PropTypes.func.isRequired,
   open: PropTypes.bool.isRequired,
+  name:PropTypes.string.isRequired,
+  email: PropTypes.string.isRequired,
+  password:PropTypes.string.isRequired,
+  onVerified:PropTypes.func.isRequired,
 };
 
 export default OtpPopUp;

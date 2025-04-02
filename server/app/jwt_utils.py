@@ -1,5 +1,5 @@
 import os
-import jwt
+import jwt as pyjwt
 import datetime
 from dotenv import load_dotenv
 
@@ -12,13 +12,13 @@ EXPIRATION_MINUTES = int(os.getenv("JWT_EXPIRATION"))
 def create_jwt_token(data: dict):
     expiry = datetime.datetime.utcnow() + datetime.timedelta(minutes = EXPIRATION_MINUTES)
     data.update({"exp": expiry})
-    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+    return pyjwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
 
 def verify_jwt_token(token: str):
     try:
-        decoded_token = jwt.decode(token, SECRET_KEY, algorithm=ALGORITHM)
+        decoded_token = pyjwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
         return decoded_token
-    except jwt.ExpiredSignatureError:
+    except pyjwt.ExpiredSignatureError:
         return None
-    except jwt.InvalidTokenError:
+    except pyjwt.InvalidTokenError:
         return None

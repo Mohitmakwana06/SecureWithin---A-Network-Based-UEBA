@@ -16,18 +16,18 @@ function App() {
     <Router>
       <div style={{ display: 'flex', height: '100vh' }}>
         <Routes>
-          {/* Sign-in Page (Standalone) */}
+          {/* Public Pages (No Sidebar) */}
           <Route path="/" element={<OrgSignIn />} />
           <Route path="/SignInSide" element={<SignInSide />} />
-          <Route path='/SignUp' element={<SignUp />}/>
-          <Route path='/OrgSignUp' element={<OrgSignUp />}/>
+          <Route path="/SignUp" element={<SignUp />} />
+          <Route path="/OrgSignUp" element={<OrgSignUp />} />
 
           {/* Authenticated Pages with Sidebar */}
           <Route
             path="/*"
             element={
               <div style={{ display: 'flex', width: '100%' }}>
-                {/* Sidebar */}
+                {/* Sidebar for Authenticated Routes */}
                 <SideMenu />
 
                 {/* Main Content Area */}
@@ -35,7 +35,8 @@ function App() {
                   <Routes>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/clients" element={<ClientsPage />} />
-                    <Route path="/details/:id" element={<DetailsPage />} />
+                    <Route path="/details/:client_id" element={<DetailsPage />} />
+                    {/* Catch-all route for undefined paths */}
                     <Route path="*" element={<Navigate to="/dashboard" />} />
                   </Routes>
                 </div>

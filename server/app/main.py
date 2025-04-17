@@ -1,9 +1,10 @@
 from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from starlette.websockets import WebSocketState
 from database import SessionLocal, engine, Base
 from models import Organization, Clients
-from schemas import OrganizationCreate, UserResponse, OrganizationJoin, OTPVerification, UserLogin, VerifySignupRequest, VerifyJoinRequest, ClientData, ClientInput, ClientDetails, Log
+from schemas import OrganizationCreate, UserResponse, OrganizationJoin, OTPVerification, UserLogin, VerifySignupRequest, VerifyJoinRequest, ClientData, ClientInput, ClientDetails, Log, Website
 from hash_password import hash_password, verify_password
 from jwt_utils import create_jwt_token, verify_jwt_token
 from password_generator import generate_org_code, generate_password
@@ -34,7 +35,6 @@ PASSWORD = "OU=7ze4HXE1ihPOptGBC"
 INDEX_NAME = "proxy-logs"
 
 RESTRICTED_DOMAINS_FILE = "D:/UEBA/ueba/server/app/restricted_domains.csv"
-LOG_FILE = "surfed_domains.txt"
 
 URL_FIELD = "destination.domain"
 TIMESTAMP_FIELD = "@timestamp"
@@ -48,6 +48,9 @@ CLIENT_ID_FIELD = "client_id.keyword"
 ALERT_COOLDOWN = 300
 
 recent_alerts = defaultdict(dict)
+
+logging.getLogger("elastic_transport").setLevel(logging.WARNING)
+logging.getLogger("elastic_transport.transport").setLevel(logging.WARNING)
 
 es = Elasticsearch(
         [ELASTICSEARCH_URL],
@@ -557,6 +560,68 @@ async def refresh_logs(client_id: str, start: int = 0, db: Session = Depends(get
         logging.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again later.")
     
+def init_csv():
+    if not os.path.exists(RESTRICTED_DOMAINS_FILE):
+        with open(RESTRICTED_DOMAINS_FILE, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["url"])
+
+init_csv()
+
+# Load all restricted websites into a set
+def load_restricted_websites():
+    websites = set()
+    if os.path.exists(RESTRICTED_DOMAINS_FILE):
+        with open(RESTRICTED_DOMAINS_FILE, "r") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                websites.add(row["url"])
+    return websites
+
+# ✅ Add a website
+@app.post("/add-website")
+def add_website(website: Website):
+    if not website.url.strip():
+        raise HTTPException(status_code=400, detail="Website URL cannot be empty.")
+
+    websites = load_restricted_websites()
+    if website.url in websites:
+        return {"message": "Website already exists in the list."}
+    
+    with open(RESTRICTED_DOMAINS_FILE, "a", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow([website.url])
+    return {"message": "Website added to the list."}
+
+# ✅ Get all restricted websites
+@app.get("/get-websites")
+def get_websites():
+    websites = load_restricted_websites()
+    return {"websites": list(websites)}
+
+# ✅ Delete a website
+@app.delete("/delete-website")
+def delete_website(website: Website):
+    if not os.path.exists(RESTRICTED_DOMAINS_FILE):
+        raise HTTPException(status_code=404, detail="CSV file not found.")
+
+    with open(RESTRICTED_DOMAINS_FILE, "r") as file:
+        rows = list(csv.reader(file))
+
+    if len(rows) <= 1:
+        return {"message": "No websites to delete."}
+
+    header, data = rows[0], rows[1:]
+    updated_data = [row for row in data if row[0] != website.url]
+
+    with open(RESTRICTED_DOMAINS_FILE, "w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(header)
+        writer.writerows(updated_data)
+    
+    return {"message": "Website deleted from the list."}
+
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
@@ -715,7 +780,6 @@ def is_outside_working_hours(timestamp):
     try:
         if isinstance(timestamp, str):
             timestamp = datetime.strptime(timestamp, "%b %d, %Y @ %H:%M:%S.%f")
-        print(f"ℹ️ Checking timestamp: {timestamp} -> Hour: {timestamp.hour}")
         return timestamp.hour < 9 or timestamp.hour >= 17  # Office hours: 9 AM - 5 PM
     except Exception as e:
         print(f"❌ Invalid timestamp format: {timestamp} ({e})")
@@ -725,7 +789,6 @@ async def detect_outside_working_hours():
     try:
         if isinstance(timestamp, str):
             timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
-        print(f"ℹ️ Checking timestamp: {timestamp} -> Hour: {timestamp.hour}")
         return timestamp.hour < 9 or timestamp.hour >= 17  # Office hours: 9 AM - 5 PM
     except Exception as e:
         print(f"❌ Invalid timestamp format: {timestamp} ({e})")
@@ -748,7 +811,6 @@ async def detect_outside_working_hours():
 
             response = es.search(index=INDEX_NAME, body=search_query)
             logs = response.get("hits", {}).get("hits", [])
-            print(f"ℹ️ Retrieved {len(logs)} logs from Elasticsearch")
 
             if not logs:
                 print("⚠️ No logs found in Elasticsearch response")
@@ -786,7 +848,6 @@ async def detect_outside_working_hours():
                     last_alert_time = recent_alerts[client_id].get("outside_working_hours", 0)
                     time_since_last_alert = current_time - last_alert_time
 
-                    print(f"ℹ️ Client {client_id}: Outside hours detected. Last alert: {time_since_last_alert:.2f}s ago, Cooldown: {ALERT_COOLDOWN}s")
                     if time_since_last_alert > ALERT_COOLDOWN:
                         alert_message = {
                             "type": "warning",
@@ -794,23 +855,15 @@ async def detect_outside_working_hours():
                             "timestamp": timestamp_str,
                         }
                         try:
-                            print(f"🚨 Sending alert: {alert_message}")
                             await manager.send_alert(json.dumps(alert_message))
-                            print(f" ✅ Alert sent successfully")
                             recent_alerts[client_id]["outside_working_hours"] = current_time
                         except Exception as e:
                             print(f"❌ Failed to send alert: {str(e)}")
                             print(f"Alert details: {alert_message}")
 
-                    else:
-                        print(f"ℹ️ Alert for {client_id} skipped (within cooldown)")
-                else:
-                    print(f"ℹ️ Client {client_id}: Access within working hours")
-
         except Exception as e:
             print(f"❌ Error in detect_outside_working_hours: {e}")
 
-        print("ℹ️ Sleeping for 5 minutes")
         await asyncio.sleep(300)  # Wait 5 minutes
         
 @app.websocket("/ws/alert")
@@ -823,6 +876,259 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"ℹ️ Client {websocket.client.host} disconnected")
         manager.disconnect(websocket)
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@app.websocket("/ws/visualizations")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+
+    async def fetch_data(initial: bool = False):
+        try:
+            # Shared aggregation structure
+            aggs = {
+                "top_clients": {
+                    "terms": {
+                        "field": "client_id.keyword",
+                        "size": 5,
+                        "order": {"total_bytes": "desc"}
+                    },
+                    "aggs": {
+                        "total_bytes": {
+                            "sum": {"field": "network.bytes"}
+                        }
+                    }
+                },
+                "network_trend": {
+                    "date_histogram": {
+                        "field": "@timestamp",
+                        "fixed_interval": "5m",
+                        "format": "yyyy-MM-dd HH:mm:ss"
+                    },
+                    "aggs": {
+                        "total_bytes": {
+                            "sum": {"field": "network.bytes"}
+                        }
+                    }
+                },
+                "protocol_usage": {
+                    "terms": {
+                        "field": "network.protocol.keyword",
+                        "size": 5,
+                        "order": {"total_bytes": "desc"}
+                    },
+                    "aggs": {
+                        "total_bytes": {
+                            "sum": {"field": "network.bytes"}
+                        }
+                    }
+                },
+                "record_counts_over_time": {
+                    "date_histogram": {
+                        "field": "@timestamp",
+                        "fixed_interval": "12h",
+                        "format": "d MMM yyyy",
+                        "min_doc_count": 0
+                    }
+                },
+                "top_domains": {
+                    "date_histogram": {
+                        "field": "@timestamp",
+                        "fixed_interval": "1d",
+                        "format": "yyyy-MM-dd",
+                        "min_doc_count": 0
+                    },
+                    "aggs": {
+                        "domains": {
+                            "terms": {
+                                "field": "destination.domain.keyword",
+                                "size": 10
+                            },
+                            "aggs": {
+                                "visit_count": {
+                                    "cardinality": {
+                                        "field": "destination.domain.keyword",
+                                        "missing": "unknown"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if initial:
+                initial_query = {
+                    "size": 100,
+                    "query": {
+                        "match_all": {}
+                    },
+                    "sort": [
+                        {"@timestamp": {"order": "asc"}}
+                    ]
+                }
+                initial_response = es.search(index="proxy-logs", body=initial_query)
+
+                if not initial_response["hits"]["hits"]:
+                    return {
+                        "top_clients": [],
+                        "network_trend": [],
+                        "protocol_usage": [],
+                        "record_counts_over_time": [],
+                        "most_visited_domains": []
+                    }
+
+                hits = initial_response["hits"]["hits"]
+                start_time = hits[0]["_source"]["@timestamp"]
+                end_time = hits[-1]["_source"]["@timestamp"]
+
+                query = {
+                    "size": 0,
+                    "query": {
+                        "bool": {
+                            "filter": [
+                                {
+                                    "range": {
+                                        "@timestamp": {
+                                            "gte": start_time,
+                                            "lte": end_time
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "aggs": aggs
+                }
+            else:
+                query = {
+                    "size": 0,
+                    "query": {
+                        "bool": {
+                            "filter": [
+                                {
+                                    "range": {
+                                        "@timestamp": {
+                                            "gte": "now-1h",
+                                            "lte": "now"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "aggs": aggs
+                }
+
+            response = es.search(index="proxy-logs", body=query)
+
+            aggregations = response["aggregations"]
+
+            top_clients = [
+                {"client_id": bucket["key"], "bytes": bucket["total_bytes"]["value"]}
+                for bucket in aggregations["top_clients"]["buckets"]
+            ]
+
+            network_trend = [
+                {"timestamp": bucket["key_as_string"], "bytes": bucket["total_bytes"]["value"]}
+                for bucket in aggregations["network_trend"]["buckets"]
+            ]
+
+            protocol_usage = [
+                {"protocol": bucket["key"], "bytes": bucket["total_bytes"]["value"]}
+                for bucket in aggregations["protocol_usage"]["buckets"]
+            ]
+
+            record_counts_over_time = [
+                {
+                    "date": bucket["key_as_string"],
+                    "count": bucket["doc_count"]
+                }
+                for bucket in aggregations["record_counts_over_time"]["buckets"]
+            ]
+
+            most_visited_domains = [
+                {
+                    "month": date_bucket["key_as_string"],
+                    "domains": [
+                        {
+                            "domain": bucket["key"],
+                            "visits": bucket["visit_count"]["value"]
+                        }
+                        for bucket in date_bucket["domains"]["buckets"]
+                    ]
+                }
+                for date_bucket in aggregations["top_domains"]["buckets"]
+            ]
+
+            result = {
+                "top_clients": top_clients,
+                "network_trend": network_trend,
+                "protocol_usage": protocol_usage,
+                "record_counts_over_time": record_counts_over_time,
+                "most_visited_domains": most_visited_domains
+            }
+            # print(f"Sending MainGrid data: {json.dumps({
+            #     'top_clients': top_clients,
+            #     'network_trend': network_trend,
+            #     'protocol_usage': protocol_usage
+            # }, indent=2)}")
+            return result
+
+        except Exception as e:
+            print(f"Elasticsearch error: {str(e)}")
+            return {
+                "top_clients": [],
+                "network_trend": [],
+                "protocol_usage": [],
+                "record_counts_over_time": [],
+                "most_visited_domains": []
+            }
+
+    async def heartbeat():
+        """Send custom ping message to keep connection alive."""
+        while True:
+            try:
+                await websocket.send_json({"type": "ping"})
+                start_time = time.time()
+                while time.time() - start_time < 5:
+                    msg = await asyncio.wait_for(websocket.receive_json(), timeout=1)
+                    if msg.get("type") == "pong":
+                        break
+                else:
+                    print()
+                await asyncio.sleep(30)
+            except WebSocketDisconnect:
+                break
+            except asyncio.TimeoutError:
+                continue
+            except Exception as e:
+                break
+
+    try:
+        heartbeat_task = asyncio.create_task(heartbeat())
+        data = await fetch_data(initial=True)
+        await websocket.send_json(data)
+
+        while True:
+            data = await fetch_data(initial=False)
+            await websocket.send_json(data)
+            await asyncio.sleep(60)
+
+    except WebSocketDisconnect:
+        print("WebSocket disconnected by client")
+    except Exception as e:
+        print(f"WebSocket error: {str(e)}")
+    finally:
+        heartbeat_task.cancel()
+        try:
+            await heartbeat_task
+        except asyncio.CancelledError:
+            print("Heartbeat task cancelled")
+        print("WebSocket handler terminated")
+
+# Ensure this is within your FastAPI app definition
+
 @app.on_event("startup")
 async def startup_event():
     """Start background tasks when FastAPI starts."""
@@ -834,8 +1140,6 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup before shutdown (if needed)."""
-    print("🚀 FastAPI is shutting down! Stopping background tasks...")
-
 
 # ✅ Run Server
 if __name__ == "__main__":

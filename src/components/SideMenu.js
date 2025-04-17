@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
 import Avatar from '@mui/material/Avatar';
 import MuiDrawer, { drawerClasses } from '@mui/material/Drawer';
@@ -10,9 +11,10 @@ import SelectContent from './SelectContent';
 import MenuContent from './MenuContent';
 import OptionsMenu from './OptionsMenu';
 import AppTheme from '../shared-theme/AppTheme';
-import Logo from '../Logo.png'
+import Logo from '../Logo.png';
+import axios from 'axios';
 
-
+// Drawer styling
 const drawerWidth = 240;
 
 const Drawer = styled(MuiDrawer)({
@@ -27,6 +29,32 @@ const Drawer = styled(MuiDrawer)({
 });
 
 export default function SideMenu() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const storedEmail = localStorage.getItem('userEmail');
+    const storedName = localStorage.getItem('userName');
+
+    if (storedEmail && storedName) {
+      setUser({ email: storedEmail, name: storedName });
+    }
+
+    setLoading(false);
+  }, []);
+
+  // Logout function
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
+    setUser(null);
+  };
+
+  if (loading) {
+    return <Typography>Loading...</Typography>;
+  }
+
   return (
     <AppTheme>
       <Drawer
@@ -45,48 +73,54 @@ export default function SideMenu() {
             p: 1.5,
           }}
         >
-          <img src={Logo}
+          <img
+            src={Logo}
             alt="Logo"
             style={{
-            width: '32px', // Adjust the size
-            height: '32px', // Adjust the size
-            marginRight: '8px', // Adds spacing between the logo and text
-            filter: 'invert(39%) sepia(53%) saturate(1732%) hue-rotate(194deg) brightness(94%) contrast(93%)',
-          }}/>
-          <Typography fontSize={25} 
-            variant="h4" color={'#4876EE'} 
-          >SecureWithin</Typography>
+              width: '32px',
+              height: '32px',
+              marginRight: '8px',
+              filter:
+                'invert(39%) sepia(53%) saturate(1732%) hue-rotate(194deg) brightness(94%) contrast(93%)',
+            }}
+          />
+          <Typography fontSize={25} variant="h4" color={'#4876EE'}>
+            SecureWithin
+          </Typography>
         </Box>
         <Divider />
         <MenuContent />
-        {/*<CardAlert />*/}
-        <Stack
-          direction="row"
-          sx={{
-            p: 2,
-            gap: 1,
-            alignItems: 'center',
-            borderTop: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Avatar
-            sizes="small"
-            alt="preet dudhat"
-            src="/static/images/avatar/7.jpg"
-            sx={{ width: 36, height: 36 }}
-          />
-          <Box sx={{ mr: 'auto' }}>
-            <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: '16px' }}>
-              preet dudhat
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              preet@email.com
-            </Typography>
-          </Box>
-          <OptionsMenu />
-        </Stack>
+        {user ? (
+          <Stack
+            direction="row"
+            sx={{
+              p: 2,
+              gap: 1,
+              alignItems: 'center',
+              borderTop: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Avatar
+              sizes="small"
+              alt={user.name}
+              src="/static/images/avatar/7.jpg"
+              sx={{ width: 36, height: 36 }}
+            />
+            <Box sx={{ mr: 'auto' }}>
+              <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: '16px' }}>
+                {user.name}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                {user.email}
+              </Typography>
+            </Box>
+            <OptionsMenu onLogout={handleLogout} />
+          </Stack>
+        ) : (
+          <Typography sx={{ p: 2 }}>Please log in</Typography>
+        )}
       </Drawer>
-      </AppTheme>
+    </AppTheme>
   );
 }

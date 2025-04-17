@@ -64,10 +64,10 @@ const DetailsPage = () => {
 
   return (
     <AppTheme>
-      <Grid container justifyContent="center" style={{ marginTop: 20 }}>
+      <Grid container  style={{ marginTop: 20 }}>
         <Grid paddingBottom={'20px'} width={'100%'}><Header /></Grid>
         <Grid paddingBottom={'20px'} width={'100%'}>
-          <Card style={{ padding: 20, width: "100%" }} paddingBottom={'20px'}>
+          <Card style={{ padding: 20, width: "1200px" }} paddingBottom={'20px'}>
             <Typography variant="h5" align="center" gutterBottom>
               Client Details
             </Typography>
@@ -85,13 +85,13 @@ const DetailsPage = () => {
             </Grid>
           </Card>
         </Grid>
-        <Grid paddingBottom={'20px'} width={'100%'}>
+        <Grid paddingBottom={'20px'} width={'1210px'}>
           <PageViewsBarChart />
         </Grid>
-        <Grid paddingBottom={'20px'} width={'100%'}>
+        <Grid paddingBottom={'20px'} width={'1245px'}>
           <ChartUserByCountry />
         </Grid>
-        <Grid paddingBottom={'20px'} width={'100%'}>
+        <Grid paddingBottom={'20px'} width={'600px'}>
           {client_id ? (
             <ClientTable clientId={client_id} />
           ) : (

@@ -43,8 +43,6 @@ AreaGradient.propTypes = {
 
 function StatCard({ title, value, interval, trend, data }) {
   const theme = useTheme();
-  const daysInWeek = getDaysInMonth(4, 2024);
-
   const trendColors = {
     up:
       theme.palette.mode === 'light'
@@ -68,12 +66,16 @@ function StatCard({ title, value, interval, trend, data }) {
 
   const color = labelColors[trend];
   const chartColor = trendColors[trend];
-  const trendValues = { up: '+25%', down: '-25%', neutral: '+5%'};
+  const trendValues = { up: '+25%', down: '-25%', neutral: '+5%' };
+
+  // Slice or map only 30 values
+  const chartData = data.slice(-30).map((point) => point.y); // just the y values for SparkLineChart
+  const xLabels = data.slice(-30).map((point) => point.x);   // x-axis labels if needed
 
   return (
     <Card variant="outlined" sx={{ height: '100%', flexGrow: 1 }}>
-      <CardContent >
-        <Typography align={'center'} component="h2" variant="subtitle2" gutterBottom >
+      <CardContent>
+        <Typography align="center" component="h2" variant="subtitle2" gutterBottom>
           {title}
         </Typography>
         <Stack
@@ -88,7 +90,7 @@ function StatCard({ title, value, interval, trend, data }) {
               <Typography variant="h4" component="p">
                 {value}
               </Typography>
-              <Chip size="small" color={color} label={trendValues[trend]} />
+              {/*<Chip size="small" color={color} label={trendValues[trend]} />*/}
             </Stack>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               {interval}
@@ -97,13 +99,13 @@ function StatCard({ title, value, interval, trend, data }) {
           <Box sx={{ width: '100%', height: 50 }}>
             <SparkLineChart
               colors={[chartColor]}
-              data={data}
+              data={chartData}
               area
               showHighlight
               showTooltip
               xAxis={{
                 scaleType: 'band',
-                data: daysInWeek, // Use the correct property 'data' for xAxis
+                data: xLabels,
               }}
               sx={{
                 [`& .${areaElementClasses.root}`]: {
@@ -121,12 +123,16 @@ function StatCard({ title, value, interval, trend, data }) {
 }
 
 StatCard.propTypes = {
-  data: PropTypes.arrayOf(PropTypes.number).isRequired,
+  data: PropTypes.arrayOf(
+    PropTypes.shape({
+      x: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      y: PropTypes.number,
+    })
+  ).isRequired,
   interval: PropTypes.string.isRequired,
   title: PropTypes.string.isRequired,
   trend: PropTypes.oneOf(['down', 'neutral', 'up']).isRequired,
   value: PropTypes.string.isRequired,
 };
-
 
 export default StatCard;

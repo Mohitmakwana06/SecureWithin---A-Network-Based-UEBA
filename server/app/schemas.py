@@ -80,6 +80,8 @@ class ClientDetails(BaseModel):
     status: str
     logs: List[Log]
 
+class Website(BaseModel):
+    url: str
 
 # ✅ User Response Schema (Excludes Password)
 class UserResponse(UserBase):

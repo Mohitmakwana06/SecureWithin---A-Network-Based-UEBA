@@ -92,7 +92,8 @@ const ClientTable = ({ clientId }) => {
   }, [clientId]);
 
   return (
-    <Card sx={{ paddingBottom: 2 }}>
+    <Card sx={{ width: "1210px", height: "100vh", overflow: "auto" }}>
+
       <CardContent>
         {/* Title */}
         <Typography variant="h6" gutterBottom>
@@ -126,7 +127,7 @@ const ClientTable = ({ clientId }) => {
 
         {/* Logs Table */}
         {Array.isArray(data) && data.length > 0 ? (
-          <TableContainer component={Paper} sx={{ marginTop: 2 }}>
+          <TableContainer component={Paper} sx={{ maxHeight: "70vh", overflow: "auto" }}>
             <Table>
               <TableHead>
                 <TableRow>

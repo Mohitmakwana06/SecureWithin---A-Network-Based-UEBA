@@ -73,7 +73,7 @@ export default function SignInCard() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            email: formData.email, // Mapping frontend email to backend email
+            email: formData.email,
             password: formData.password,
             organization_code: formData.orgCode,
           }),
@@ -86,10 +86,13 @@ export default function SignInCard() {
 
         const data = await response.json();
         console.log('Login successful:', data);
-        // Handle successful login, such as saving JWT token to localStorage
-        localStorage.setItem('token', data.token);
 
-        // Navigate to a different page after successful login (if needed)
+        // Save token, name, and email to localStorage
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userName', data.name);
+        localStorage.setItem('userEmail', data.email);
+
+        // Redirect to dashboard
         navigate('/dashboard');
       } catch (error) {
         setErrors({ apiError: error.message || 'Something went wrong' });

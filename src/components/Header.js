@@ -6,6 +6,7 @@ import {
 } from "@mui/material";
 import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
 import { CheckCircleOutlined, NotificationsActive } from "@mui/icons-material";
+import ColorModeSelect from "../shared-theme/ColorModeSelect";
 
 export default function Header() {
   const anchorRef = useRef(null);
@@ -68,7 +69,7 @@ export default function Header() {
   };
 
   return (
-    <Stack direction="row"
+    <Stack direction="row" 
       sx={{
         display: { xs: "none", md: "flex" },
         width: "100%",
@@ -81,7 +82,7 @@ export default function Header() {
       spacing={2}
     >
       {/* Notification Icon */}
-      <Box sx={{ position: "relative", display: "inline-block" }}>
+      <Box sx={{ position: "relative", display: "inline-block",align:"right" }}>
         <IconButton ref={anchorRef} color="inherit" onClick={handleToggle}>
           <Badge badgeContent={read} color="primary">
             <NotificationsRoundedIcon />
@@ -129,6 +130,7 @@ export default function Header() {
           </Paper>
         </Popper>
       </Box>
+      <ColorModeSelect sx={{ position: "fixed", top: "1rem", right: "1rem" }} />
     </Stack>
   );
 }

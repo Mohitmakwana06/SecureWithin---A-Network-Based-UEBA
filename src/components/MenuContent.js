@@ -17,14 +17,14 @@ import HelpRoundedIcon from '@mui/icons-material/HelpRounded';
 const mainListItems = [
   { text: 'Home', icon: <HomeRoundedIcon />, route: '/Dashboard' },
   { text: 'Clients', icon: <PeopleRoundedIcon />, route: '/clients' },
-  { text: 'Analytics', icon: <AnalyticsRoundedIcon />, route: '/analytics' },
-  { text: 'Tasks', icon: <AssignmentRoundedIcon />, route: '/tasks' },
+  //{/*{ text: 'Analytics', icon: <AnalyticsRoundedIcon />, route: '/analytics' },*/},
+  { text: 'Rules', icon: <AssignmentRoundedIcon />, route: '/Rules' },
 ];
 
 const secondaryListItems = [
-  { text: 'Settings', icon: <SettingsRoundedIcon /> },
-  { text: 'About', icon: <InfoRoundedIcon /> },
-  { text: 'Feedback', icon: <HelpRoundedIcon /> },
+ // {/*{ text: 'Settings', icon: <SettingsRoundedIcon /> },*/},
+  { text: 'About', icon: <InfoRoundedIcon />, route: '/About' },
+  //{/*{ text: 'Feedback', icon: <HelpRoundedIcon /> },*/}
 ];
 
 export default function MenuContent() {

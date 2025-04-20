@@ -10,6 +10,8 @@ import SignUp from './components/SignUp';
 import OrgSignIn from './components/OrgSignIn';
 import OrgSignUp from './components/OrgSignUp';
 import SignInCard from './components/SignInCard';
+import About from './components/About';
+import Rules from './components/Rules';
 
 function App() {
   return (
@@ -33,11 +35,14 @@ function App() {
                 {/* Main Content Area */}
                 <div style={{ flex: 1, padding: '20px' }}>
                   <Routes>
+                   <Route path="Rules" element={<Rules />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/clients" element={<ClientsPage />} />
                     <Route path="/details/:client_id" element={<DetailsPage />} />
+                    <Route path="/About" element={<About />} />                     
                     {/* Catch-all route for undefined paths */}
                     <Route path="*" element={<Navigate to="/dashboard" />} />
+                    
                   </Routes>
                 </div>
               </div>
@@ -49,4 +54,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;

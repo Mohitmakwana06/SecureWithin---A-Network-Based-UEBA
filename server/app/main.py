@@ -572,10 +572,11 @@ init_csv()
 def load_restricted_websites():
     websites = set()
     if os.path.exists(RESTRICTED_DOMAINS_FILE):
-        with open(RESTRICTED_DOMAINS_FILE, "r") as file:
-            reader = csv.DictReader(file)
+        with open(RESTRICTED_DOMAINS_FILE, "r", newline="") as file:
+            reader = csv.reader(file)
             for row in reader:
-                websites.add(row["url"])
+                if row and row[0].strip():  # Ensure the row is not empty
+                    websites.add(row[0].strip())  # Add domain URL to the set
     return websites
 
 # ✅ Add a website
@@ -587,10 +588,12 @@ def add_website(website: Website):
     websites = load_restricted_websites()
     if website.url in websites:
         return {"message": "Website already exists in the list."}
-    
+
+    # Append the new website URL to the CSV file on a new line
     with open(RESTRICTED_DOMAINS_FILE, "a", newline="") as file:
         writer = csv.writer(file)
-        writer.writerow([website.url])
+        writer.writerow([website.url.strip()])  # Strip to ensure no extra spaces
+
     return {"message": "Website added to the list."}
 
 # ✅ Get all restricted websites
@@ -1145,3 +1148,5 @@ async def shutdown_event():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+#haarcb

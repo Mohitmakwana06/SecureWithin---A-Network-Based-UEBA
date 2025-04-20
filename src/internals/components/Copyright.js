@@ -16,8 +16,8 @@ export default function Copyright(props) {
       ]}
     >
       {'Copyright © '}
-      <Link color="inherit" href="https://mui.com/">
-        SourceWithin
+      <Link color="inherit" href="http://localhost:3000/Dashboard">
+        SecureWithin
       </Link>{' '}
       {new Date().getFullYear()}
       {'.'}

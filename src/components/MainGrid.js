@@ -136,8 +136,8 @@ export default function MainGrid() {
         </Grid>
         <Grid item xs={12} lg={3}>
           <Stack gap={2} direction={{ xs: 'column', sm: 'row', lg: 'column' }}>
-            <CustomizedTreeView />
-            <ChartUserByCountry />
+            {/*<CustomizedTreeView />
+            <ChartUserByCountry />*/}
           </Stack>
         </Grid>
       </Grid>

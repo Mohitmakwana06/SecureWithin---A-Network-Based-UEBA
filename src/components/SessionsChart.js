@@ -5,6 +5,7 @@ import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import { LineChart } from '@mui/x-charts/LineChart';
+import AppTheme from '../shared-theme/AppTheme';
 
 function AreaGradient({ color, id }) {
   return (
@@ -147,12 +148,12 @@ export default function LogCountsChart() {
   console.log('Chart Data Points:', { xAxisData, logCountData });
 
   return (
+    <AppTheme>
     <Card
       variant="outlined"
       sx={{
         width: '100%',
-        backgroundColor: '#1a1a1a',
-        color: '#ffffff',
+        
       }}
     >
       <CardContent>
@@ -161,7 +162,7 @@ export default function LogCountsChart() {
           component="h2"
           variant="subtitle2"
           gutterBottom
-          sx={{ color: '#ffffff' }}
+          
         >
           Log Counts
         </Typography>
@@ -172,9 +173,9 @@ export default function LogCountsChart() {
           justifyContent="center"
           spacing={1}
           mb={1}
-          sx={{ color: '#ffffff' }}
+          
         >
-          <Typography variant="h4" sx={{ color: '#ffffff' }}>
+          <Typography variant="h4">
             {totalCount}
           </Typography>
           <Typography variant="subtitle2" color="success.main">
@@ -238,5 +239,6 @@ export default function LogCountsChart() {
         </LineChart>
       </CardContent>
     </Card>
+    </AppTheme>
   );
 }

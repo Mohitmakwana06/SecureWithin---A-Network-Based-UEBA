@@ -89,7 +89,7 @@ const DetailsPage = () => {
           <PageViewsBarChart />
         </Grid>
         <Grid paddingBottom={'20px'} width={'1245px'}>
-          <ChartUserByCountry />
+          {/*<ChartUserByCountry />*/}
         </Grid>
         <Grid paddingBottom={'20px'} width={'600px'}>
           {client_id ? (

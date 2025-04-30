@@ -131,7 +131,7 @@ export default function MainGrid() {
       </Typography>
 
       <Grid container spacing={2}>
-        <Grid item xs={12} lg={9}>
+        <Grid item xs={12} lg={12}>
           <CustomizedDataGrid />
         </Grid>
         <Grid item xs={12} lg={3}>

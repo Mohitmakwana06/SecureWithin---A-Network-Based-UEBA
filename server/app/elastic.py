@@ -2,7 +2,7 @@ from elasticsearch import Elasticsearch
 
 ELASTICSEARCH_URL = "https://localhost:9200"  # Ensure HTTPS is used
 USERNAME = "elastic"
-PASSWORD = "OU=7ze4HXE1ihPOptGBC"
+PASSWORD = ""
 
 # Elasticsearch connection
 es = Elasticsearch(

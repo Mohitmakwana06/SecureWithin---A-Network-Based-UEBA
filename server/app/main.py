@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from dateutil import parser
 import asyncio
 import time
+import pytz
 import tldextract
 import random
 import os
@@ -31,8 +32,8 @@ urllib3.disable_warnings()
 app = FastAPI()
 ELASTICSEARCH_URL = "https://localhost:9200"
 USERNAME = "elastic"
-PASSWORD = "OU=7ze4HXE1ihPOptGBC"
-INDEX_NAME = "proxy-logs"
+PASSWORD = "YOUR ELASTICSEARCH PASSWORD"  # Replace with your actual password
+INDEX_NAME = "YOUR INDEX NAME"  # Replace with your actual index name
 
 RESTRICTED_DOMAINS_FILE = "D:/UEBA/ueba/server/app/restricted_domains.csv"
 
@@ -778,97 +779,123 @@ async def detect_restricted_domains():
         await asyncio.sleep(1)
 
 
-# Function to check if a timestamp is outside working hours (9 AM - 5 PM)
+# Convert UTC timestamp to IST (Indian Standard Time)
+def convert_to_ist(timestamp):
+    # Ensure the timestamp is in UTC
+    timestamp = timestamp.replace(tzinfo=pytz.UTC)  # Add UTC timezone info
+    # Convert to IST
+    ist_timezone = pytz.timezone("Asia/Kolkata")
+    timestamp_ist = timestamp.astimezone(ist_timezone)
+    return timestamp_ist
+
+# Function to check if a timestamp is outside working hours (before 9 AM or after 5 PM)
 def is_outside_working_hours(timestamp):
     try:
-        if isinstance(timestamp, str):
-            timestamp = datetime.strptime(timestamp, "%b %d, %Y @ %H:%M:%S.%f")
-        return timestamp.hour < 9 or timestamp.hour >= 17  # Office hours: 9 AM - 5 PM
+        if isinstance(timestamp, str):  # Check if it's a string (timestamp in string format)
+            # Convert the string timestamp into a datetime object in UTC
+            timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+            timestamp = convert_to_ist(timestamp)  # Convert to IST
+
+        # Check if the timestamp is outside working hours (before 9 AM or after 5 PM IST)
+        return timestamp.hour < 17 or timestamp.hour >= 19  # Outside working hours: before 9 AM or after 5 PM IST
+
     except Exception as e:
         print(f"❌ Invalid timestamp format: {timestamp} ({e})")
         return False
 
+# Main async function to detect access outside working hours
 async def detect_outside_working_hours():
     try:
-        if isinstance(timestamp, str):
-            timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
-        return timestamp.hour < 9 or timestamp.hour >= 17  # Office hours: 9 AM - 5 PM
-    except Exception as e:
-        print(f"❌ Invalid timestamp format: {timestamp} ({e})")
-        return False
+        print("🚀 detect_outside_working_hours started")
 
+        if not es:  # Check if Elasticsearch connection is established
+            print("❌ Elasticsearch connection not established!")
+            return  
 
-async def detect_outside_working_hours():
-    if not es:
-        print("❌ Elasticsearch connection not established!")
-        return  
+        while True:
+            print("🔁 Checking for access outside working hours...")
 
-    while True:
-        try:
-            search_query = {
-                "size": 100,
-                "_source": ["client_name", "client_id", "destination.domain", "@timestamp"],
-                "query": {"exists": {"field": "destination.domain"}},
-                "sort": [{"@timestamp": {"order": "desc"}}]
-            }
+            try:
+                search_query = {
+                    "size": 100,
+                    "_source": ["client_name", "client_id", "destination.domain", "@timestamp"],
+                    "query": {"exists": {"field": "destination.domain"}},
+                    "sort": [{"@timestamp": {"order": "desc"}}]
+                }
 
-            response = es.search(index=INDEX_NAME, body=search_query)
-            logs = response.get("hits", {}).get("hits", [])
-
-            if not logs:
-                print("⚠️ No logs found in Elasticsearch response")
-                await asyncio.sleep(300)
-                continue
-
-            current_time = time.time()
-
-            for log in logs:
-                source = log.get("_source", {})
-                timestamp_str = source.get("@timestamp", "")
-                client_name = source.get("client_name", "Unknown Client")
-                client_id = source.get("client_id", "Unknown ID")
-
-                if isinstance(client_id, list):
-                    client_id = str(client_id)
-
-
-                if not timestamp_str:
-                    print(f"⚠️ Missing timestamp for client {client_id}")
-                    continue
-
-                try:
-                    # Parse the timestamp in the format "2025-04-01T15:21:03.479Z"
-                    timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S.%fZ")
-                except ValueError as e:
-                    print(f"❌ Failed to parse timestamp: {timestamp_str} ({e})")
-                    continue
-
-                # Check if access is outside working hours
-                if is_outside_working_hours(timestamp):
-                    if client_id not in recent_alerts:
-                        recent_alerts[client_id] = {}
-                    
-                    last_alert_time = recent_alerts[client_id].get("outside_working_hours", 0)
-                    time_since_last_alert = current_time - last_alert_time
-
-                    if time_since_last_alert > ALERT_COOLDOWN:
-                        alert_message = {
-                            "type": "warning",
-                            "message": f"⚠️ {client_name} (ID: {client_id}) accessed outside working hours at {timestamp_str}",
-                            "timestamp": timestamp_str,
-                        }
-                        try:
-                            await manager.send_alert(json.dumps(alert_message))
-                            recent_alerts[client_id]["outside_working_hours"] = current_time
-                        except Exception as e:
-                            print(f"❌ Failed to send alert: {str(e)}")
-                            print(f"Alert details: {alert_message}")
-
-        except Exception as e:
-            print(f"❌ Error in detect_outside_working_hours: {e}")
-
-        await asyncio.sleep(300)  # Wait 5 minutes
+                response = es.search(index=INDEX_NAME, body=search_query)  # Query Elasticsearch
+                logs = response.get("hits", {}).get("hits", [])
         
+                if not logs:
+                    print("⚠️ No logs found in Elasticsearch response")
+                    await asyncio.sleep(200)  # Wait before the next check
+                    continue
+                
+    
+                current_time = time.time()  # Get the current time for alert cooldown
+
+                for log in logs:
+                    source = log.get("_source", {})
+                    timestamp_str = source.get("@timestamp", "")
+                    client_name = source.get("client_name", "Unknown Client")
+                    client_id = source.get("client_id", "Unknown ID")
+
+                   
+
+                    if isinstance(client_id, list):  # Convert client_id if it's a list
+                        client_id = str(client_id)
+
+                    if not timestamp_str:
+                        print(f"⚠️ Missing timestamp for client {client_id}")
+                        continue
+                    
+                    
+
+                    try:
+                        # Check if the timestamp is outside working hours (before 9 AM or after 5 PM IST)
+                        if is_outside_working_hours(timestamp_str):
+                            if client_id not in recent_alerts:
+                                recent_alerts[client_id] = {}
+
+                        
+
+                            last_alert_time = recent_alerts[client_id].get("outside_working_hours", 0)
+                            time_since_last_alert = current_time - last_alert_time
+
+                            if time_since_last_alert > ALERT_COOLDOWN:
+                                alert_message = {
+                                    "type": "warning",
+                                    "message": f"⚠️ {client_name} (ID: {client_id}) accessed outside working hours at {timestamp_str}",
+                                    "timestamp": timestamp_str,
+                                }
+
+                                # Send alert to frontend using the manager
+                                try:
+                                    # Send the alert message to the frontend
+                                    await manager.send_alert(json.dumps(alert_message))
+                                    print("✅ Alert sent to frontend:", alert_message)
+
+                                    # Update the recent_alerts to prevent repeated alerts in the cooldown period
+                                    if client_id not in recent_alerts:
+                                        recent_alerts[client_id] = {}
+                                    recent_alerts[client_id]["outside_working_hours"] = current_time
+                                except Exception as e:
+                                    print(f"❌ Failed to send alert to frontend: {e}")
+                                    print(f"Alert details: {alert_message}")
+                            
+                    except ValueError as e:
+                        print(f"❌ Failed to parse timestamp: {timestamp_str} ({e})")
+                        continue
+
+            except Exception as e:
+                print(f"❌ Error while checking logs: {e}")
+
+            await asyncio.sleep(200)  # Wait 5 minutes before the next check
+
+    except Exception as e:
+        print(f"🔥 detect_outside_working_hours crashed: {e}")
+
+
 @app.websocket("/ws/alert")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
@@ -1148,5 +1175,3 @@ async def shutdown_event():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-#haarcb

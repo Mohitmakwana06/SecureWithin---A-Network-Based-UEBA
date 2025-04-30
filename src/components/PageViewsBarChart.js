@@ -110,7 +110,7 @@ export default function PageViewsBarChart() {
               gap: 1,
             }}
           >
-            <Typography variant="h4" component="p">
+            <Typography variant="h4" component="p" alignItems="center">
               {chartData.seriesData.length > 0 ? 'Top Domains' : 'Loading...'}
             </Typography>
             <Chip size="small" color="success" label="Live" />

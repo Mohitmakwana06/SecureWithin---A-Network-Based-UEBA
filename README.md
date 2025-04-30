@@ -1,70 +1,199 @@
-# Getting Started with Create React App
+# 🔐 Securewithin: Network-Based UEBA System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-## Available Scripts
+**Securewithin: A network based UEBA** is a network-based **User and Entity Behavior Analytics (UEBA)** system designed to monitor and analyze user behavior and entity interactions across the network in real-time. It uses the **ELK Stack (Elasticsearch, Logstash, Kibana)** and **Packetbeat** for collecting, enriching, storing, visualizing, and analyzing network traffic logs.
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## 📘 Overview
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Securewithin-A leverages network-level telemetry to detect anomalies by analyzing patterns of user and entity behavior. The architecture is built around structured log collection from endpoints using Packetbeat, central aggregation with Logstash, storage in Elasticsearch, visualization in Kibana, and behavioral analysis via a dedicated UEBA module.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## 🧠 How It Works
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+1. **Packetbeat** runs on client machines and captures real-time network traffic.
+2. Captured data is sent to **Logstash**, where it is enriched with metadata like `client_id` and `client_name`.
+3. Logs are indexed in **Elasticsearch** for searchability and analysis.
+4. **Kibana** provides dashboards and tools for visualizing behavior patterns and detecting anomalies.
+5. A **UEBA engine** analyzes the stored data to identify suspicious activity and generate alerts.
 
-### `npm run build`
+---
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## 🖥️ System Architecture
+![alt text](Deployment.png)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+---
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## ⚙️ Installation & Configuration
 
-### `npm run eject`
+### 📌 Prerequisites
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- Java 8 or higher
+- ELK Stack (Elasticsearch, Logstash, Kibana)
+- Packetbeat
+- HTTPS access if using secured communication
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+---
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### 🏗️ Installation Steps
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+#### 1. **Install Elasticsearch**
 
-## Learn More
+Download and extract the ZIP package:
+```bash
+cd elasticsearch-<version>/bin
+./elasticsearch.bat
+```
+Verify it’s running at: **http://localhost:9200**
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+#### 2. **Install Kibana**
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Extract and run:
+```bash
+cd kibana-<version>/bin
+./kibana.bat
+```
 
-### Code Splitting
+Access at: **http://localhost:5601**
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+#### 3. **Install and Configure Logstash**
 
-### Analyzing the Bundle Size
+Create *logstash.conf*:
+```bash
+input {
+  beats {
+    port => 5044
+  }
+}
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+filter {
+  mutate {
+    add_field => { "client_id" => "%{[client_id]}" }
+    add_field => { "client_name" => "%{[client_name]}" }
+  }
+}
 
-### Making a Progressive Web App
+output {
+  elasticsearch {
+    hosts => ["https://localhost:9200"]
+    user => "elastic"
+    password => "YOUR_ELASTICSEARCH_PASSWORD"
+    ssl_certificate_verification => false
+    index => "YOUR_INDEX_NAME"
+  }
+}
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Run Logstash:
+```bash
+cd logstash-<version>/bin
+./logstash.bat -f path\to\logstash.conf
+```
 
-### Advanced Configuration
+#### 4. **Install and Configure Packetbeat (On Clients)**
+Edit *packetbeat.yml*:
+```bash
+packetbeat.interfaces.device: 3
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+packetbeat.interfaces.internal_networks:
+  - private
 
-### Deployment
+packetbeat.flows:
+  timeout: 30s
+  period: 5s
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+packetbeat.protocols:
+  - type: dns
+    ports: [53]
 
-### `npm run build` fails to minify
+  - type: http
+    ports: [80, 8080, 8000, 5000, 8002]
+    send_request: true
+    send_response: true
+    include_body_for: ["application/json", "text/html"]
+    real_ip_header: "X-Forwarded-For"
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+  - type: tls
+    ports:
+      - 443
+      - 993
+      - 995
+      - 5223
+      - 8443
+      - 8883
+      - 9243
+    include_raw_details: true
+    fingerprint: true
+
+output.logstash:
+  hosts: ["localhost:5044"]
+
+processors:
+  - add_fields:
+      target: ''
+      fields:
+        client_id: "clientA"
+        client_name: "Jeff Bezos"
+```
+
+Run Packetbeat:
+```bash
+cd packetbeat-<version>
+./packetbeat.exe -c path\to\packetbeat.yml -e -d "*"
+```
+
+---
+
+## 🧪 Running the System
+
+Start services in order:
+
+1. **Elasticsearch**
+2. **Kibana**
+3. **Logstash**
+4. **Packetbeat** *(on each client machine)*
+
+Access Kibana at: [http://localhost:5601](http://localhost:5601)
+
+---
+
+## 🛠️ Important Notes
+
+- ✅ Install **Logstash + Packetbeat** on every client machine.
+- 🖥️ Run **Elasticsearch, Kibana, and UEBA system** on a **centralized admin server**.
+- 🔗 Ensure `client_id` matches between Packetbeat and Logstash configurations for correct data mapping.
+
+---
+
+## 📊 Visualizations & Alerts
+
+- **Dashboards**: Use Kibana to create dashboards tracking:
+  - Network traffic volume
+  - Protocol usage (HTTP, DNS, TLS, etc.)
+  - Top users/entities by activity
+- **Alerts**: Set up alert triggers in Kibana based on:
+  - Behavioral anomalies
+  - Unusual login times
+  - High-volume DNS or HTTP requests
+  - Suspicious TLS/SSL patterns
+
+---
+
+## 🤝 Contributions
+
+Contributions are welcome! Please fork the repository and submit a pull request with your enhancements.
+
+Feel free to open issues for bugs, feature requests, or questions.
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License** – see the [LICENSE](LICENSE) file for details.
+
+---
+
+Thank you for using **Securewithin**!
+

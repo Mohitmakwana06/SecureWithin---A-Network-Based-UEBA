@@ -5,37 +5,30 @@ from sqlalchemy.exc import OperationalError
 from dotenv import load_dotenv
 import logging
 
-# Set up logging to debug connection issues
+# Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load environment variables
+# Load env vars
 load_dotenv()
 
-# Get database URL
 URL_DATABASE = os.getenv("DATABASE_URL")
-
 if not URL_DATABASE:
-    raise ValueError("DATABASE_URL is not set in environment variables")
+    raise ValueError("DATABASE_URL is not set")
 
-# Create engine with optimized connection pool settings
 try:
     engine = create_engine(
-    URL_DATABASE,
-    pool_size=8,           # Increased to handle more concurrent connections
-    max_overflow=4,        # Allow more overflow for traffic spikes
-    pool_recycle=300,      # Keep recycling every 5 minutes to prevent stale connections
-    pool_timeout=20,       # Wait 20s before failing to reduce timeout errors
-    pool_pre_ping=True,    # Check connection health before use
-    pool_use_lifo=True     # Reuse recent connections for better performance
+        URL_DATABASE,
+        pool_size=15,
+        max_overflow=20,
+        pool_recycle=180,
+        pool_timeout=10,
+        pool_pre_ping=True
     )
     logger.info("Database engine created successfully")
 except Exception as e:
-    logger.error(f"Failed to create database engine: {e}")
+    logger.error(f"Engine creation failed: {e}")
     raise
 
-# Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Base class for ORM models
 Base = declarative_base()

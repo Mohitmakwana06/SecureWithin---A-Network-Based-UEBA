@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def send_email(email: EmailStr, subject: str, message: str):
-    smtp_email = "newprojectueba69@gmail.com" #os.getenv("EMAIL_USERNAME")
-    smtp_password = "jygg isrf xgbx mwjt" #os.getenv("EMAIL_PASSWORD")
+    smtp_email = "YOUR EMAIL ID" #os.getenv("EMAIL_USERNAME")
+    smtp_password = "YOUR EMAIL APP PASSWORD" #os.getenv("EMAIL_PASSWORD")
     smtp_server = os.getenv("EMAIL_SERVER")
     smtp_port = int(os.getenv("EMAIL_PORT"))
 
